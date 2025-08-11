@@ -1,0 +1,26 @@
+# Development overrides
+# This file automatically extends docker-compose.yml for development
+
+services:
+  api:
+    # Enable hot reload in development
+    volumes:
+      - .:/app
+      - ./uploads:/app/uploads
+      - ./.env:/app/.env:ro
+    environment:
+      - DEBUG=true
+      - RELOAD=true
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  web:
+    # Enable hot reload for Next.js
+    command: ["npm", "run", "dev"]
+    environment:
+      - NODE_ENV=development
+      - DOCUMENT_API_URL=http://api:8000
+      - BACKEND_URL=http://api:8000
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+      - /app/.next
