@@ -217,19 +217,17 @@ temp/
 uploads/*
 !uploads/.gitkeep
 
-# Document files (except test and config files)
-*.pdf
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.bmp
-*.tiff
-*.txt
-!test_*.txt
-!test_*.pdf
-!requirements.txt
-!README.txt
+# Document files in uploads only (preserve screenshots and docs)
+uploads/*.pdf
+uploads/*.jpg
+uploads/*.jpeg
+uploads/*.png
+uploads/*.gif
+uploads/*.bmp
+uploads/*.tiff
+uploads/*.txt
+!uploads/test_*
+!uploads/README.*
 
 # Database files
 *.db
@@ -239,10 +237,10 @@ uploads/*
 # Configuration files with secrets
 config.local.py
 
-# Test files created during development
-test_*.py
-!test_workflows.py
-!test_documents.py
+# Test files created during development (in specific locations)
+uploads/test_*.py
+temp_test_*.py
+# Allow test files in root and standard test directories
 
 # Convex deployment artifacts
 web/convex/_generated/
@@ -253,6 +251,20 @@ web/convex/.env*
 .rts2_cache_cjs/
 .rts2_cache_es/
 .rts2_cache_umd/
+
+# FastAPI specific
+.pytest_cache/
+__pycache__/
+.coverage
+htmlcov/
+
+# Docker
+.dockerignore
+docker-compose.override.local.yml
+
+# Development files
+.devcontainer/
+.dev/
 
 # Vercel
 .vercel

@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Edge } from '@xyflow/react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 interface WorkflowNode {
   id: string;
@@ -14,7 +17,7 @@ interface WorkflowNode {
 interface Workflow {
   id?: string;
   name: string;
-  description: string;
+  description?: string;
   definition: {
     nodes: WorkflowNode[];
     edges: Edge[];
@@ -46,56 +49,40 @@ interface ExecutionResult {
 }
 
 export function useWorkflows() {
-  const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadWorkflows = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch('/api/workflows');
-      if (!response.ok) {
-        throw new Error(`Failed to load workflows: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      setWorkflows(data);
-    } catch (error) {
-      console.error('Failed to load workflows:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load workflows');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Use Convex queries and mutations
+  const workflows = useQuery(api.workflows.list, {}) || [];
+  const createWorkflow = useMutation(api.workflows.create);
+  const updateWorkflow = useMutation(api.workflows.update);
+  const deleteWorkflowMutation = useMutation(api.workflows.remove);
 
   const saveWorkflow = useCallback(async (workflow: Workflow): Promise<string | null> => {
     try {
       setLoading(true);
       setError(null);
       
-      const url = workflow.id ? `/api/workflows/${workflow.id}` : '/api/workflows';
-      const method = workflow.id ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(workflow),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to save workflow: ${response.statusText}`);
+      if (workflow.id) {
+        // Update existing workflow
+        await updateWorkflow({
+          id: workflow.id as Id<"workflows">,
+          name: workflow.name,
+          description: workflow.description,
+          definition: workflow.definition,
+          is_active: true,
+        });
+        return workflow.id;
+      } else {
+        // Create new workflow
+        const id = await createWorkflow({
+          name: workflow.name,
+          description: workflow.description,
+          definition: workflow.definition,
+          is_active: true,
+        });
+        return id;
       }
-      
-      const result = await response.json();
-      
-      // Reload workflows to get updated list
-      await loadWorkflows();
-      
-      return result.id;
     } catch (error) {
       console.error('Failed to save workflow:', error);
       setError(error instanceof Error ? error.message : 'Failed to save workflow');
@@ -103,24 +90,14 @@ export function useWorkflows() {
     } finally {
       setLoading(false);
     }
-  }, [loadWorkflows]);
+  }, [createWorkflow, updateWorkflow]);
 
   const deleteWorkflow = useCallback(async (workflowId: string): Promise<boolean> => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`/api/workflows/${workflowId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete workflow: ${response.statusText}`);
-      }
-      
-      // Reload workflows to get updated list
-      await loadWorkflows();
-      
+      await deleteWorkflowMutation({ id: workflowId as Id<"workflows"> });
       return true;
     } catch (error) {
       console.error('Failed to delete workflow:', error);
@@ -129,7 +106,7 @@ export function useWorkflows() {
     } finally {
       setLoading(false);
     }
-  }, [loadWorkflows]);
+  }, [deleteWorkflowMutation]);
 
   const executeWorkflow = useCallback(async (workflowId: string, files?: File[]): Promise<ExecutionResult | null> => {
     try {
@@ -205,16 +182,10 @@ export function useWorkflows() {
     }
   }, []);
 
-  // Load workflows on mount
-  useEffect(() => {
-    loadWorkflows();
-  }, [loadWorkflows]);
-
   return {
     workflows,
     loading,
     error,
-    loadWorkflows,
     saveWorkflow,
     deleteWorkflow,
     executeWorkflow,

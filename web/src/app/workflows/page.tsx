@@ -66,9 +66,10 @@ interface WorkflowNode {
 }
 
 interface Workflow {
+  _id?: string;
   id?: string;
   name: string;
-  description: string;
+  description?: string;
   definition: {
     nodes: WorkflowNode[];
     edges: Edge[];
@@ -188,7 +189,8 @@ export default function WorkflowsPage() {
 
   const handleLoadWorkflow = async (workflow: Workflow) => {
     setCurrentWorkflow({
-      id: workflow.id,
+      _id: workflow._id,
+      id: workflow._id, // Set id to _id for consistency
       name: workflow.name,
       description: workflow.description,
       definition: workflow.definition,
@@ -220,7 +222,7 @@ export default function WorkflowsPage() {
   const handleDeleteWorkflow = async (workflowId: string) => {
     if (confirm('Are you sure you want to delete this workflow?')) {
       const success = await deleteWorkflow(workflowId);
-      if (success && currentWorkflow?.id === workflowId) {
+      if (success && (currentWorkflow?.id === workflowId || currentWorkflow?._id === workflowId)) {
         handleNewWorkflow();
       }
     }
@@ -431,9 +433,9 @@ ${validation.warnings.map((w: string) => `• ${w}`).join('\n')}`;
                 ) : (
                   workflows.map((workflow) => (
                     <Card
-                      key={workflow.id}
+                      key={workflow._id}
                       className={`cursor-pointer transition-all hover:shadow-md ${
-                        currentWorkflow?.id === workflow.id
+                        currentWorkflow?.id === workflow._id
                           ? 'border-primary bg-primary/5'
                           : 'hover:border-primary/50'
                       }`}
@@ -446,7 +448,7 @@ ${validation.warnings.map((w: string) => `• ${w}`).join('\n')}`;
                               <h4 className="font-medium truncate">
                                 {workflow.name}
                               </h4>
-                              {currentWorkflow?.id === workflow.id && (
+                              {currentWorkflow?.id === workflow._id && (
                                 <Badge variant="default" className="text-xs">
                                   Active
                                 </Badge>
@@ -482,14 +484,14 @@ ${validation.warnings.map((w: string) => `• ${w}`).join('\n')}`;
                           {/* Action buttons */}
                           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <div className="flex items-center space-x-1">
-                              {workflow.id && (
+                              {workflow._id && (
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (workflow.id && confirm('Are you sure you want to delete this workflow?')) {
-                                    handleDeleteWorkflow(workflow.id);
+                                  if (workflow._id && confirm('Are you sure you want to delete this workflow?')) {
+                                    handleDeleteWorkflow(workflow._id);
                                   }
                                 }}
                                 className="p-1 h-auto text-muted-foreground hover:text-red-500"

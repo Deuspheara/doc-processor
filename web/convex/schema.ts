@@ -2,12 +2,23 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  users: defineTable({
+    userId: v.optional(v.string()),
+    email: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  }).index("by_user_id", ["userId"]),
+
   documents: defineTable({
     filename: v.string(),
     status: v.union(v.literal("processing"), v.literal("processed"), v.literal("failed")),
     timestamp: v.string(),
     file_size_mb: v.number(),
     content_type: v.string(),
+    userId: v.optional(v.string()),
     processing_result: v.optional(v.object({
       ocr_text: v.string(),
       extracted_entities: v.array(v.object({
@@ -21,7 +32,7 @@ export default defineSchema({
       processing_stats: v.any(),
     })),
     error_message: v.optional(v.string()),
-  }),
+  }).index("by_user_id", ["userId"]),
   
   workflows: defineTable({
     name: v.string(),
@@ -30,7 +41,8 @@ export default defineSchema({
     is_active: v.boolean(),
     created_at: v.string(),
     updated_at: v.string(),
-  }),
+    userId: v.optional(v.string()),
+  }).index("by_user_id", ["userId"]),
   
   workflow_executions: defineTable({
     workflow_id: v.id("workflows"),
@@ -40,5 +52,6 @@ export default defineSchema({
     error_message: v.optional(v.string()),
     started_at: v.string(),
     completed_at: v.optional(v.string()),
-  }),
+    userId: v.optional(v.string()),
+  }).index("by_user_id", ["userId"]).index("by_workflow_id", ["workflow_id"]),
 });

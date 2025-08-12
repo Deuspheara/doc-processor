@@ -65,6 +65,10 @@ async def process_document(
         ..., 
         description="JSON string containing extraction configuration"
     ),
+    document_id: str = Form(
+        None,
+        description="Optional existing document ID to update instead of creating new"
+    ),
     ocr_service: OCRServiceDep = None,
     extraction_service: ExtractionServiceDep = None
 ):
@@ -82,13 +86,19 @@ async def process_document(
     file_content = await file.read()
     file_size_mb = MistralOCRService.validate_file_size(file_content)
     
-    # Store initial document record
-    doc_id = await storage_service.store_document(
-        filename=file.filename,
-        file_size_mb=file_size_mb,
-        content_type=file.content_type,
-        status="processing"
-    )
+    # Store initial document record or use existing one
+    if document_id:
+        # Use provided document ID - don't create or update in Python backend
+        # The Next.js API will handle all Convex updates
+        doc_id = document_id
+    else:
+        # Create new document record (fallback for direct API usage)
+        doc_id = await storage_service.store_document(
+            filename=file.filename,
+            file_size_mb=file_size_mb,
+            content_type=file.content_type,
+            status="processing"
+        )
     
     # Parse and validate extraction parameters
     try:
@@ -166,42 +176,46 @@ async def process_document(
                 }
             )
             
-            # Update document record with successful results
-            await storage_service.update_document(
-                doc_id=doc_id,
-                processing_result=processing_result,
-                status="processed"
-            )
+            # Update document record with successful results (only if not using provided document_id)
+            if not document_id:
+                await storage_service.update_document(
+                    doc_id=doc_id,
+                    processing_result=processing_result,
+                    status="processed"
+                )
             
             return processing_result
         except Exception as validation_error:
-            # Update document record with error
-            await storage_service.update_document(
-                doc_id=doc_id,
-                status="failed",
-                error_message=f"Result validation failed: {str(validation_error)}"
-            )
+            # Update document record with error (only if not using provided document_id)
+            if not document_id:
+                await storage_service.update_document(
+                    doc_id=doc_id,
+                    status="failed",
+                    error_message=f"Result validation failed: {str(validation_error)}"
+                )
             raise HTTPException(
                 status_code=500,
                 detail=f"Result validation failed: {str(validation_error)}"
             )
         
     except HTTPException as http_exc:
-        # Update document record with HTTP error
-        await storage_service.update_document(
-            doc_id=doc_id,
-            status="failed",
-            error_message=http_exc.detail
-        )
+        # Update document record with HTTP error (only if not using provided document_id)
+        if not document_id:
+            await storage_service.update_document(
+                doc_id=doc_id,
+                status="failed",
+                error_message=http_exc.detail
+            )
         # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
-        # Update document record with unexpected error
-        await storage_service.update_document(
-            doc_id=doc_id,
-            status="failed",
-            error_message=f"Document processing failed: {str(e)}"
-        )
+        # Update document record with unexpected error (only if not using provided document_id)
+        if not document_id:
+            await storage_service.update_document(
+                doc_id=doc_id,
+                status="failed",
+                error_message=f"Document processing failed: {str(e)}"
+            )
         # Handle unexpected errors
         raise HTTPException(
             status_code=500,
@@ -235,6 +249,10 @@ async def process_document(
 )
 async def process_invoice(
     file: UploadFile = File(..., description="Invoice document to process"),
+    document_id: str = Form(
+        None,
+        description="Optional existing document ID to update instead of creating new"
+    ),
     ocr_service: OCRServiceDep = None,
     extraction_service: ExtractionServiceDep = None
 ):
@@ -362,6 +380,7 @@ async def process_invoice(
     return await process_document(
         file=file,
         extraction_request=extraction_request_json,
+        document_id=document_id,
         ocr_service=ocr_service,
         extraction_service=extraction_service
     )

@@ -1,31 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const API_BASE_URL = process.env.DOCUMENT_API_URL || 'http://localhost:8000';
+import { auth } from '@clerk/nextjs/server';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const documentId = id;
-
-    const response = await fetch(`${API_BASE_URL}/documents/${documentId}/`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ 
-        error: response.status === 404 ? 'Document not found' : 'Failed to fetch document' 
-      }));
-      return NextResponse.json(errorData, { status: response.status });
+    // Get authentication info
+    const { userId, getToken } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    // Get the Convex token from Clerk
+    const token = await getToken({ template: 'convex' });
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unable to get authentication token' },
+        { status: 401 }
+      );
+    }
+
+    // Create authenticated Convex client
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    convex.setAuth(token);
+
+    const { id } = await params;
+    
+    try {
+      const document = await convex.query(api.documents.get, { 
+        id: id as Id<"documents"> 
+      });
+      
+      if (!document) {
+        return NextResponse.json(
+          { error: 'Document not found' },
+          { status: 404 }
+        );
+      }
+
+      // Transform document to use 'id' instead of '_id' for frontend compatibility
+      const transformedDocument = {
+        ...document,
+        id: document._id,
+        _id: undefined
+      };
+
+      return NextResponse.json(transformedDocument);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Access denied') {
+        return NextResponse.json(
+          { error: 'Access denied' },
+          { status: 403 }
+        );
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Document API error:', error);
     return NextResponse.json(
@@ -40,25 +78,53 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const documentId = id;
-
-    const response = await fetch(`${API_BASE_URL}/documents/${documentId}/`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ 
-        error: response.status === 404 ? 'Document not found' : 'Failed to delete document' 
-      }));
-      return NextResponse.json(errorData, { status: response.status });
+    // Get authentication info
+    const { userId, getToken } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    // Get the Convex token from Clerk
+    const token = await getToken({ template: 'convex' });
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unable to get authentication token' },
+        { status: 401 }
+      );
+    }
+
+    // Create authenticated Convex client
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    convex.setAuth(token);
+
+    const { id } = await params;
+    
+    try {
+      const result = await convex.mutation(api.documents.remove, { 
+        id: id as Id<"documents"> 
+      });
+      
+      return NextResponse.json(result);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Access denied') {
+        return NextResponse.json(
+          { error: 'Access denied' },
+          { status: 403 }
+        );
+      }
+      if (error instanceof Error && error.message === 'Document not found') {
+        return NextResponse.json(
+          { error: 'Document not found' },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Document delete API error:', error);
     return NextResponse.json(

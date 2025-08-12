@@ -1,7 +1,20 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-// Query to get all documents with pagination and optional status filter
+async function getCurrentUser(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new Error("Not authenticated");
+  }
+  return identity.subject;
+}
+
+async function getCurrentUserOptional(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  return identity?.subject;
+}
+
+// Query to get all documents for current user with pagination and optional status filter
 export const list = query({
   args: {
     limit: v.optional(v.number()),
@@ -9,10 +22,15 @@ export const list = query({
     status_filter: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getCurrentUserOptional(ctx);
     const limit = args.limit ?? 50;
-    const offset = args.offset ?? 0;
     
     let query = ctx.db.query("documents").order("desc");
+    
+    // If user is authenticated, filter by user ID
+    if (userId) {
+      query = query.filter((q) => q.eq(q.field("userId"), userId));
+    }
     
     // Apply status filter if provided
     if (args.status_filter) {
@@ -22,22 +40,34 @@ export const list = query({
     const documents = await query
       .paginate({
         numItems: limit,
-        cursor: null, // Convex handles pagination differently
+        cursor: null,
       });
     
     return {
       documents: documents.page,
-      total_count: documents.page.length, // This is simplified - in production you'd want to count separately
+      total_count: documents.page.length,
       has_more: documents.isDone ? false : true,
     };
   },
 });
 
-// Query to get a single document by ID
+// Query to get a single document by ID (only if owned by current user)
 export const get = query({
   args: { id: v.id("documents") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const userId = await getCurrentUserOptional(ctx);
+    const document = await ctx.db.get(args.id);
+    
+    if (!document) {
+      throw new Error("Document not found");
+    }
+    
+    // If user is authenticated and document has userId, check ownership
+    if (userId && document.userId && document.userId !== userId) {
+      throw new Error("Access denied");
+    }
+    
+    return document;
   },
 });
 
@@ -49,9 +79,14 @@ export const create = mutation({
     content_type: v.string(),
     status: v.union(v.literal("processing"), v.literal("processed"), v.literal("failed")),
     error_message: v.optional(v.string()),
+    userId: v.optional(v.string()), // Allow backend to specify userId
   },
   handler: async (ctx, args) => {
+    const currentUserId = await getCurrentUserOptional(ctx);
     const timestamp = new Date().toISOString();
+    
+    // Use provided userId or fall back to authenticated user
+    const userId = args.userId || currentUserId;
     
     return await ctx.db.insert("documents", {
       filename: args.filename,
@@ -60,11 +95,12 @@ export const create = mutation({
       file_size_mb: args.file_size_mb,
       content_type: args.content_type,
       error_message: args.error_message,
+      userId,
     });
   },
 });
 
-// Mutation to update a document record
+// Mutation to update a document record (only if owned by current user or from backend)
 export const update = mutation({
   args: {
     id: v.id("documents"),
@@ -82,8 +118,21 @@ export const update = mutation({
     })),
     status: v.optional(v.union(v.literal("processing"), v.literal("processed"), v.literal("failed"))),
     error_message: v.optional(v.string()),
+    bypass_auth: v.optional(v.boolean()), // Allow backend to bypass auth
   },
   handler: async (ctx, args) => {
+    const userId = await getCurrentUserOptional(ctx);
+    const document = await ctx.db.get(args.id);
+    
+    if (!document) {
+      throw new Error("Document not found");
+    }
+    
+    // Check permissions unless bypassing auth (for backend)
+    if (!args.bypass_auth && userId && document.userId && document.userId !== userId) {
+      throw new Error("Access denied");
+    }
+    
     const timestamp = new Date().toISOString();
     
     const updateData: any = {
@@ -105,10 +154,21 @@ export const update = mutation({
   },
 });
 
-// Mutation to delete a document record
+// Mutation to delete a document record (only if owned by current user)
 export const remove = mutation({
   args: { id: v.id("documents") },
   handler: async (ctx, args) => {
+    const userId = await getCurrentUser(ctx);
+    const document = await ctx.db.get(args.id);
+    
+    if (!document) {
+      throw new Error("Document not found");
+    }
+    
+    if (document.userId && document.userId !== userId) {
+      throw new Error("Access denied");
+    }
+    
     await ctx.db.delete(args.id);
     return { success: true };
   },

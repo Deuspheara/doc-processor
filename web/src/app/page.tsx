@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { SignedIn, SignedOut, SignInButton, useUser } from '@clerk/nextjs';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 
 interface HealthStatus {
   status: string;
@@ -14,9 +17,13 @@ interface HealthStatus {
   available_endpoints: string[];
 }
 
-export default function Dashboard() {
+function AuthenticatedDashboard() {
+  const { user } = useUser();
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const documents = useQuery(api.documents.list, {});
+  const workflows = useQuery(api.workflows.list, {});
 
   useEffect(() => {
     // Check API health status
@@ -27,11 +34,16 @@ export default function Dashboard() {
       .finally(() => setIsLoading(false));
   }, []);
 
+  const processedDocuments = documents?.documents?.filter(doc => doc.status === 'processed').length || 0;
+  const activeWorkflows = workflows?.filter(wf => wf.is_active).length || 0;
+  const totalDocuments = documents?.documents?.length || 0;
+  const successRate = totalDocuments > 0 ? Math.round((processedDocuments / totalDocuments) * 100) : 0;
+
   const stats = [
-    { name: 'Documents Processed', value: '12', icon: FileText, color: 'bg-blue-500' },
-    { name: 'Active Workflows', value: '3', icon: Workflow, color: 'bg-green-500' },
-    { name: 'Success Rate', value: '98%', icon: TrendingUp, color: 'bg-purple-500' },
-    { name: 'Files Uploaded', value: '24', icon: Upload, color: 'bg-yellow-500' },
+    { name: 'Documents Processed', value: processedDocuments.toString(), icon: FileText, color: 'bg-blue-500' },
+    { name: 'Active Workflows', value: activeWorkflows.toString(), icon: Workflow, color: 'bg-green-500' },
+    { name: 'Success Rate', value: `${successRate}%`, icon: TrendingUp, color: 'bg-purple-500' },
+    { name: 'Files Uploaded', value: totalDocuments.toString(), icon: Upload, color: 'bg-yellow-500' },
   ];
 
   return (
@@ -159,5 +171,76 @@ export default function Dashboard() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function UnauthenticatedLanding() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8 text-center">
+      <div className="space-y-4">
+        <h1 className="text-4xl font-bold">Document Processing Platform</h1>
+        <p className="text-xl text-muted-foreground max-w-2xl">
+          AI-powered document processing with OCR, information extraction, and custom workflows. 
+          Sign in to get started.
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <div className="p-3 bg-blue-100 rounded-lg inline-block mb-4">
+              <Upload className="h-8 w-8 text-blue-600" />
+            </div>
+            <CardTitle className="mb-2">Upload & Process</CardTitle>
+            <CardDescription>
+              Upload documents and extract information with advanced OCR and AI
+            </CardDescription>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6 text-center">
+            <div className="p-3 bg-green-100 rounded-lg inline-block mb-4">
+              <Workflow className="h-8 w-8 text-green-600" />
+            </div>
+            <CardTitle className="mb-2">Custom Workflows</CardTitle>
+            <CardDescription>
+              Build custom processing workflows for your specific needs
+            </CardDescription>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6 text-center">
+            <div className="p-3 bg-purple-100 rounded-lg inline-block mb-4">
+              <FileText className="h-8 w-8 text-purple-600" />
+            </div>
+            <CardTitle className="mb-2">Secure Results</CardTitle>
+            <CardDescription>
+              All your documents and results are private and secure
+            </CardDescription>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <SignInButton mode="modal">
+        <Button size="lg" className="px-8">
+          Get Started
+        </Button>
+      </SignInButton>
+    </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <>
+      <SignedIn>
+        <AuthenticatedDashboard />
+      </SignedIn>
+      <SignedOut>
+        <UnauthenticatedLanding />
+      </SignedOut>
+    </>
   );
 }

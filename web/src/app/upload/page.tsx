@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useWorkflows } from '@/components/workflow/useWorkflows';
 
 interface ProcessingResult {
   ocr_text: string;
@@ -54,6 +55,7 @@ const documentTypes: DocumentType[] = [
 
 export default function UploadPage() {
   const router = useRouter();
+  const { saveWorkflow, loading: workflowLoading } = useWorkflows();
   const [selectedType, setSelectedType] = useState<string>('auto');
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<ProcessingResult | null>(null);
@@ -200,42 +202,35 @@ export default function UploadPage() {
       
       console.log('Generated workflow template:', workflowTemplate);
 
-      // Save the workflow
-      console.log('Saving workflow with payload:', {
+      // Clean the workflow data to remove function properties that Convex can't serialize
+      const cleanWorkflowData = {
         name: workflowTemplate.name,
         description: workflowTemplate.description,
         definition: {
-          nodes: workflowTemplate.nodes,
+          nodes: workflowTemplate.nodes.map(node => ({
+            id: node.id,
+            type: node.type,
+            position: node.position,
+            data: {
+              label: node.data.label,
+              config: node.data.config
+              // Exclude onConfigUpdate function
+            }
+          })),
           edges: workflowTemplate.edges
         }
-      });
+      };
 
-      const response = await fetch('/api/workflows', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: workflowTemplate.name,
-          description: workflowTemplate.description,
-          definition: {
-            nodes: workflowTemplate.nodes,
-            edges: workflowTemplate.edges
-          }
-        }),
-      });
+      console.log('Saving workflow with cleaned payload:', cleanWorkflowData);
 
-      console.log('Workflow save response status:', response.status);
+      const workflowId = await saveWorkflow(cleanWorkflowData);
       
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Workflow saved successfully:', result);
+      if (workflowId) {
+        console.log('Workflow saved successfully:', workflowId);
         setShowWorkflowDialog(false);
         router.push('/workflows');
       } else {
-        const errorText = await response.text();
-        console.error('Workflow save failed:', errorText);
-        throw new Error(`Failed to create workflow: ${errorText}`);
+        throw new Error('Failed to create workflow');
       }
     } catch (error) {
       console.error('Error creating workflow:', error);
@@ -535,10 +530,20 @@ export default function UploadPage() {
                   </Button>
                   <Button
                     onClick={handleCreateWorkflow}
+                    disabled={workflowLoading}
                     className="flex-1"
                   >
-                    Create Workflow
-                    <ArrowRight className="w-4 h-4 ml-2" />
+                    {workflowLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        Create Workflow
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>

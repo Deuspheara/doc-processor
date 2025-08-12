@@ -1,22 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+import { auth } from '@clerk/nextjs/server';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '@/convex/_generated/api';
 
 export async function GET() {
   try {
-    const response = await fetch(`${BACKEND_URL}/api/workflows`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Backend error: ${response.statusText}`);
+    const { userId, getToken } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    // Get the Convex token from Clerk
+    const token = await getToken({ template: 'convex' });
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unable to get authentication token' },
+        { status: 401 }
+      );
+    }
+
+    // Create authenticated Convex client
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    convex.setAuth(token);
+
+    const workflows = await convex.query(api.workflows.list, {});
+    return NextResponse.json(workflows);
   } catch (error) {
     console.error('Failed to fetch workflows:', error);
     return NextResponse.json(
@@ -28,27 +41,43 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const { userId, getToken } = await auth();
     
-    const response = await fetch(`${BACKEND_URL}/api/workflows`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Backend error: ${response.statusText}`);
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    const body = await request.json();
+    
+    // Get the Convex token from Clerk
+    const token = await getToken({ template: 'convex' });
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unable to get authentication token' },
+        { status: 401 }
+      );
+    }
+
+    // Create authenticated Convex client
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    convex.setAuth(token);
+
+    const workflowId = await convex.mutation(api.workflows.create, {
+      name: body.name,
+      description: body.description,
+      definition: body.definition,
+      is_active: body.is_active ?? true,
+    });
+
+    return NextResponse.json({ id: workflowId, message: 'Workflow created successfully' });
   } catch (error) {
     console.error('Failed to create workflow:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create workflow' },
+      { error: 'Failed to create workflow' },
       { status: 500 }
     );
   }
