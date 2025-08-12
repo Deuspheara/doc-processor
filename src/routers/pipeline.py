@@ -13,6 +13,7 @@ from ..dependencies import OCRServiceDep, ExtractionServiceDep, SettingsDep
 from ..models import ProcessingResult, ExtractionRequest, ExtractionExample, ExtractionEntity
 from ..services.ocr_service import MistralOCRService
 from ..services.extraction_service import ExtractionService
+from ..services.convex_storage import ConvexStorageService
 
 router = APIRouter(
     prefix="/process",
@@ -25,6 +26,9 @@ router = APIRouter(
         503: {"description": "Service unavailable"}
     }
 )
+
+# Initialize storage service
+storage_service = ConvexStorageService()
 
 
 @router.post(
@@ -77,6 +81,14 @@ async def process_document(
     # Read and validate file content
     file_content = await file.read()
     file_size_mb = MistralOCRService.validate_file_size(file_content)
+    
+    # Store initial document record
+    doc_id = await storage_service.store_document(
+        filename=file.filename,
+        file_size_mb=file_size_mb,
+        content_type=file.content_type,
+        status="processing"
+    )
     
     # Parse and validate extraction parameters
     try:
@@ -140,7 +152,7 @@ async def process_document(
                     entity["attributes"] = {}
             
             # Create the response
-            return ProcessingResult(
+            processing_result = ProcessingResult(
                 ocr_text=extracted_text,
                 extracted_entities=[ExtractionEntity(**entity) for entity in entities],
                 extraction_metadata=extraction_result["metadata"],
@@ -153,16 +165,43 @@ async def process_document(
                     "extraction_model": f"{extraction_req.model_type}:{extraction_req.model_id}"
                 }
             )
+            
+            # Update document record with successful results
+            await storage_service.update_document(
+                doc_id=doc_id,
+                processing_result=processing_result,
+                status="processed"
+            )
+            
+            return processing_result
         except Exception as validation_error:
+            # Update document record with error
+            await storage_service.update_document(
+                doc_id=doc_id,
+                status="failed",
+                error_message=f"Result validation failed: {str(validation_error)}"
+            )
             raise HTTPException(
                 status_code=500,
                 detail=f"Result validation failed: {str(validation_error)}"
             )
         
-    except HTTPException:
+    except HTTPException as http_exc:
+        # Update document record with HTTP error
+        await storage_service.update_document(
+            doc_id=doc_id,
+            status="failed",
+            error_message=http_exc.detail
+        )
         # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
+        # Update document record with unexpected error
+        await storage_service.update_document(
+            doc_id=doc_id,
+            status="failed",
+            error_message=f"Document processing failed: {str(e)}"
+        )
         # Handle unexpected errors
         raise HTTPException(
             status_code=500,
@@ -216,80 +255,99 @@ async def process_invoice(
         examples=[
             ExtractionExample(
                 text="""
-                INVOICE #INV-2024-001
-                Date: January 15, 2024
+                # GitKraken Invoice
                 
-                From: ABC Supply Company
-                123 Business Ave, Suite 100
-                New York, NY 10001
-                Phone: (555) 123-4567
+                Axosoft LLC (DBA GitKraken)
+                16435 N Scottsdale Road, Suite 130
+                Scottsdale, AZ 85254 United States
+                EIN: 85-2352677 VAT Reg # : EU372067381
                 
-                Bill To: XYZ Corporation
-                456 Corporate Blvd
-                Chicago, IL 60601
+                ## BILLED TO
+                Quentin Gaillardet
+                quentin.gaillardet01's organization
+                France
                 
-                Description                 Qty    Unit Price    Amount
-                Office Supplies              2      $125.00     $250.00
-                Printer Paper (Box)          5       $25.00     $125.00
-                Pens (Pack of 12)           10       $15.00     $150.00
+                ## INVOICE
+                Invoice # 328321 
+                Invoice Date Mar 01, 2025 
+                Invoice Amount 48,00 € (EUR) 
+                Customer ID 2f78bbf5-4b32-44dd-8293-8827a74280b9 
+                Payment Terms Due Upon Receipt PAID
                 
-                Subtotal:                                       $525.00
-                Tax (8.5%):                                      $44.63
-                Total:                                          $569.63
+                SUBSCRIPTION ID AzqMTPUeEaFIi2tm3 
+                Billing Period Mar 01, 2025 to Feb 28, 2026 
+                Next Billing Date Mar 01, 2026
                 
-                Payment Terms: Net 30
-                Due Date: February 14, 2024
+                | DESCRIPTION | UNIT PRICE | DISCOUNT | TOTAL EXCL. VAT | VAT | AMOUNT (EUR) |
+                | GitKraken Pro | 60,00 € × 1 | -20,00 € | 40,00 € | 8,00 € | 48,00 € |
+                
+                Total excl. VAT: 40,00 €
+                VAT (standard) @ 20%: 8,00 €
+                Total: 48,00 €
+                Payments: -48,00 €
+                Amount Due (EUR): 0,00 €
+                
+                ## PAYMENTS
+                48,00 € was paid on 01 Mar, 2025 15:24 MST by MasterCard card ending 0873.
+                
+                ## DISCOUNT  
+                GitKraken Holiday applied on line item #1 - 20,00 € (33.33%).
                 """,
                 extractions=[
                     ExtractionEntity(
                         extraction_class="invoice_number",
-                        extraction_text="INV-2024-001",
+                        extraction_text="328321",
                         attributes={"confidence": 1.0}
                     ),
                     ExtractionEntity(
                         extraction_class="invoice_date",
-                        extraction_text="January 15, 2024",
+                        extraction_text="Mar 01, 2025",
                         attributes={"confidence": 1.0, "format": "date"}
                     ),
                     ExtractionEntity(
                         extraction_class="vendor_name",
-                        extraction_text="ABC Supply Company",
+                        extraction_text="Axosoft LLC (DBA GitKraken)",
                         attributes={"confidence": 1.0}
                     ),
                     ExtractionEntity(
                         extraction_class="vendor_address",
-                        extraction_text="123 Business Ave, Suite 100, New York, NY 10001",
-                        attributes={"confidence": 0.9}
+                        extraction_text="16435 N Scottsdale Road, Suite 130, Scottsdale, AZ 85254 United States",
+                        attributes={"confidence": 1.0}
                     ),
                     ExtractionEntity(
                         extraction_class="customer_name",
-                        extraction_text="XYZ Corporation", 
+                        extraction_text="Quentin Gaillardet", 
                         attributes={"confidence": 1.0}
                     ),
                     ExtractionEntity(
                         extraction_class="total_amount",
-                        extraction_text="$569.63",
-                        attributes={"currency": "USD", "confidence": 1.0, "amount_type": "total"}
+                        extraction_text="48,00 €",
+                        attributes={"currency": "EUR", "confidence": 1.0, "amount_type": "total"}
                     ),
                     ExtractionEntity(
                         extraction_class="subtotal_amount",
-                        extraction_text="$525.00",
-                        attributes={"currency": "USD", "confidence": 1.0, "amount_type": "subtotal"}
+                        extraction_text="40,00 €",
+                        attributes={"currency": "EUR", "confidence": 1.0, "amount_type": "subtotal"}
                     ),
                     ExtractionEntity(
                         extraction_class="tax_amount",
-                        extraction_text="$44.63",
-                        attributes={"currency": "USD", "confidence": 0.9, "tax_rate": "8.5%"}
+                        extraction_text="8,00 €",
+                        attributes={"currency": "EUR", "confidence": 1.0, "tax_rate": "20%"}
                     ),
                     ExtractionEntity(
                         extraction_class="due_date",
-                        extraction_text="February 14, 2024",
-                        attributes={"confidence": 1.0, "format": "date"}
+                        extraction_text="Due Upon Receipt",
+                        attributes={"confidence": 1.0, "format": "payment_terms"}
                     ),
                     ExtractionEntity(
                         extraction_class="payment_terms",
-                        extraction_text="Net 30",
+                        extraction_text="Due Upon Receipt",
                         attributes={"confidence": 1.0}
+                    ),
+                    ExtractionEntity(
+                        extraction_class="line_items",
+                        extraction_text="GitKraken Pro - 60,00 € × 1 with -20,00 € discount = 40,00 € + 8,00 € VAT = 48,00 €",
+                        attributes={"confidence": 0.9, "item_count": 1}
                     )
                 ]
             )

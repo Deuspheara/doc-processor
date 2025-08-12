@@ -24,7 +24,7 @@ import logging
 from datetime import datetime
 
 from .config import settings
-from .routers import health, ocr, extraction, pipeline, workflows
+from .routers import health, ocr, extraction, pipeline, workflows, documents
 
 
 # Configure logging
@@ -86,6 +86,10 @@ app = FastAPI(
         {
             "name": "Workflows",
             "description": "Visual workflow builder and execution engine for document processing"
+        },
+        {
+            "name": "Document Management",
+            "description": "Manage and retrieve processed document records and results"
         }
     ]
 )
@@ -135,6 +139,7 @@ app.include_router(ocr.router)
 app.include_router(extraction.router)
 app.include_router(pipeline.router)
 app.include_router(workflows.router)
+app.include_router(documents.router)
 
 
 # Health endpoint for load balancers and monitoring

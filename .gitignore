@@ -102,6 +102,10 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .venv
 env/
 venv/
@@ -138,44 +142,47 @@ web/.next/
 web/out/
 web/build
 web/dist
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# local env files
-.env*.local
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# Node.js
 web/node_modules/
 web/.npm
 web/.eslintcache
 web/.node_repl_history
 web/.yarn-integrity
 
-# IDEs
+# Convex
+web/convex/_generated/
+web/convex/.env
+web/convex/.env.local
+web/convex/auth.config.js
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+.node_repl_history
+.yarn-integrity
+*.tgz
+
+# Build outputs
+/build
+build/
+dist/
+out/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDEs and Editors
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
+# OS generated files
 .DS_Store
 .DS_Store?
 ._*
@@ -188,11 +195,11 @@ Thumbs.db
 .dockerignore
 
 # Logs
-logs
+logs/
 *.log
 
 # Runtime data
-pids
+pids/
 *.pid
 *.seed
 *.pid.lock
@@ -200,142 +207,52 @@ pids
 # Coverage directory used by tools like istanbul
 coverage/
 *.lcov
-
-# nyc test coverage
 .nyc_output
 
-# Dependency directories
-node_modules/
-jspm_packages/
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
+# Temporary directories
+tmp/
+temp/
 
 # Application specific
 uploads/*
 !uploads/.gitkeep
+
+# Document files (except test and config files)
 *.pdf
 *.jpg
 *.jpeg
+*.png
 *.gif
 *.bmp
 *.tiff
 *.txt
-!test_invoice.txt
+!test_*.txt
+!test_*.pdf
+!requirements.txt
+!README.txt
 
-# Database
+# Database files
 *.db
 *.sqlite
 *.sqlite3
 
 # Configuration files with secrets
 config.local.py
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
-# Add reference to web/.gitignore
-web/.gitignore
+# Test files created during development
+test_*.py
+!test_workflows.py
+!test_documents.py
 
-# Additional Python-related patterns
-.mypy_cache/
-.pytest_cache/
-.coverage*
-.tox/
-.nox/
-.hypothesis/
-.pytype/
-.pyre/
-.pdm.toml
-.pdm-python
-.pdm-build/
+# Convex deployment artifacts
+web/convex/_generated/
+web/convex/.env*
 
-# Additional Node.js/Next.js patterns
-.next/
-out/
-build
-dist
-.npm
-.eslintcache
-.yarn-integrity
-.node_repl_history
+# Additional cache directories
 .rpt2_cache/
 .rts2_cache_cjs/
 .rts2_cache_es/
 .rts2_cache_umd/
 
-# Additional IDE and OS patterns
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Additional general patterns
-tmp/
-temp/
-logs
-*.log
-pids
-*.pid
-*.seed
-*.pid.lock
-coverage/
-*.lcov
-.nyc_output
-node_modules/
-jspm_packages/
-.npm
-.eslintcache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-.node_repl_history
-*.tgz
-.yarn-integrity
-
-# Application-specific patterns
-uploads/*
-!uploads/.gitkeep
-*.pdf
-*.jpg
-*.jpeg
-*.gif
-*.bmp
-*.tiff
-*.txt
-!test_invoice.txt
-*.db
-*.sqlite
-*.sqlite3
-config.local.py
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Vercel
+.vercel

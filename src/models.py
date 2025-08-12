@@ -270,3 +270,58 @@ class TestOCRResponse(BaseModel):
         None,
         description="Type of error that occurred"
     )
+
+
+class DocumentRecord(BaseModel):
+    """
+    Stored document processing record.
+    
+    Represents a processed document with its results and metadata.
+    """
+    id: str = Field(
+        ...,
+        description="Unique document identifier"
+    )
+    filename: str = Field(
+        ...,
+        description="Original filename of the processed document"
+    )
+    status: str = Field(
+        ...,
+        description="Processing status: processed, processing, failed",
+        example="processed"
+    )
+    timestamp: str = Field(
+        ...,
+        description="ISO timestamp when processing was completed"
+    )
+    file_size_mb: float = Field(
+        ...,
+        description="File size in megabytes"
+    )
+    content_type: str = Field(
+        ...,
+        description="MIME type of the original file"
+    )
+    processing_result: Optional[ProcessingResult] = Field(
+        None,
+        description="Complete processing results (null if still processing or failed)"
+    )
+    error_message: Optional[str] = Field(
+        None,
+        description="Error message if processing failed"
+    )
+
+
+class DocumentListResponse(BaseModel):
+    """
+    Response for listing processed documents.
+    """
+    documents: List[DocumentRecord] = Field(
+        ...,
+        description="List of processed document records"
+    )
+    total_count: int = Field(
+        ...,
+        description="Total number of documents"
+    )

@@ -6,34 +6,27 @@ import json
 import uuid
 
 from ..services.workflow_engine import WorkflowEngine
+from ..services.convex_workflow_storage import ConvexWorkflowStorageService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/workflows", tags=["workflows"])
 
-# Mock database functions - replace with actual database integration later
-workflows_db = {}
-executions_db = {}
+# Initialize Convex workflow storage service
+workflow_storage = ConvexWorkflowStorageService()
 
 @router.post("/", response_model=Dict[str, Any])
 async def create_workflow(workflow_data: Dict[str, Any]):
     """Create a new workflow"""
     try:
-        workflow_id = str(uuid.uuid4())
+        workflow_id = await workflow_storage.create_workflow(
+            name=workflow_data['name'],
+            description=workflow_data.get('description', ''),
+            definition=workflow_data['definition'],
+            is_active=True
+        )
         
-        workflow = {
-            'id': workflow_id,
-            'name': workflow_data['name'],
-            'description': workflow_data.get('description', ''),
-            'definition': workflow_data['definition'],
-            'is_active': True,
-            'created_at': datetime.utcnow().isoformat(),
-            'updated_at': datetime.utcnow().isoformat()
-        }
-        
-        workflows_db[workflow_id] = workflow
-        
-        logger.info(f"Created workflow: {workflow_id} - {workflow['name']}")
+        logger.info(f"Created workflow: {workflow_id} - {workflow_data['name']}")
         return {"id": workflow_id, "message": "Workflow created successfully"}
         
     except Exception as e:
@@ -44,18 +37,19 @@ async def create_workflow(workflow_data: Dict[str, Any]):
 async def list_workflows():
     """Get all workflows"""
     try:
+        workflows_data = await workflow_storage.list_workflows(is_active=True)
+        
         workflows = []
-        for workflow in workflows_db.values():
-            if workflow.get('is_active', True):
-                workflows.append({
-                    "id": workflow['id'],
-                    "name": workflow['name'],
-                    "description": workflow['description'],
-                    "created_at": workflow['created_at'],
-                    "updated_at": workflow.get('updated_at'),
-                    "definition": workflow.get('definition', {"nodes": [], "edges": []}),
-                    "node_count": len(workflow['definition'].get('nodes', [])) if workflow.get('definition') else 0
-                })
+        for workflow in workflows_data:
+            workflows.append({
+                "id": workflow['_id'],
+                "name": workflow['name'],
+                "description": workflow.get('description', ''),
+                "created_at": workflow['created_at'],
+                "updated_at": workflow.get('updated_at'),
+                "definition": workflow.get('definition', {"nodes": [], "edges": []}),
+                "node_count": len(workflow['definition'].get('nodes', [])) if workflow.get('definition') else 0
+            })
         
         return workflows
         
@@ -344,9 +338,18 @@ async def validate_workflow(workflow_definition: Dict[str, Any]):
 @router.get("/health", response_model=Dict[str, str])
 async def workflow_health():
     """Health check for workflow service"""
-    return {
-        "status": "healthy",
-        "service": "workflow_service",
-        "workflows_count": str(len([w for w in workflows_db.values() if w.get('is_active', True)])),
-        "executions_count": str(len(executions_db))
-    }
+    try:
+        workflows = await workflow_storage.list_workflows(is_active=True)
+        executions = await workflow_storage.list_executions()
+        return {
+            "status": "healthy",
+            "service": "workflow_service",
+            "workflows_count": str(len(workflows)),
+            "executions_count": str(len(executions))
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "service": "workflow_service",
+            "error": str(e)
+        }

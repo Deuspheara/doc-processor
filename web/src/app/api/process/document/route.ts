@@ -40,8 +40,20 @@ export async function POST(request: NextRequest) {
       // Detect document type based on OCR text
       const detectionResult = detectDocumentType(ocrData.text);
       
-      // If we detected an invoice with high confidence, use the invoice endpoint
-      if (detectionResult.type === 'invoice' && detectionResult.confidence > 0.6) {
+      // If we detected an invoice, use the invoice endpoint (lowered threshold)
+      if (detectionResult.type === 'invoice' && detectionResult.confidence > 0.3) {
+        const invoiceResponse = await fetch(`${API_BASE_URL}/process/invoice`, {
+          method: 'POST',
+          body: formData,
+        });
+        const invoiceData = await invoiceResponse.json();
+        return NextResponse.json(invoiceData, { status: invoiceResponse.status });
+      } 
+      // Also check if the text contains obvious invoice keywords as fallback
+      else if (ocrData.text.toLowerCase().includes('invoice') || 
+               ocrData.text.toLowerCase().includes('billed to') ||
+               ocrData.text.match(/total.*€|total.*\$/i) ||
+               ocrData.text.match(/vat|tax/i)) {
         const invoiceResponse = await fetch(`${API_BASE_URL}/process/invoice`, {
           method: 'POST',
           body: formData,
