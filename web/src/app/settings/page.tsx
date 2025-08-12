@@ -2,6 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { Save, Key, Settings as SettingsIcon, Globe, Zap } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface ApiConfig {
   mistral_api_key: string;
@@ -92,218 +99,220 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600 mt-2">
+        <h1 className="text-3xl font-bold">Settings</h1>
+        <p className="text-muted-foreground mt-2">
           Configure API keys, models, and processing parameters
         </p>
       </div>
 
       {/* Message Display */}
       {message && (
-        <div className={`p-4 rounded-lg ${
-          message.type === 'success' 
-            ? 'bg-green-50 border border-green-200 text-green-800' 
-            : 'bg-red-50 border border-red-200 text-red-800'
-        }`}>
-          {message.text}
-        </div>
+        <Alert variant={message.type === 'success' ? 'default' : 'destructive'}>
+          <AlertDescription>
+            {message.text}
+          </AlertDescription>
+        </Alert>
       )}
 
-      {/* API Configuration */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <Key className="h-6 w-6 text-gray-600" />
-          <h2 className="text-xl font-semibold">API Configuration</h2>
-        </div>
+      {/* Settings Tabs */}
+      <Tabs defaultValue="api" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="api">API Configuration</TabsTrigger>
+          <TabsTrigger value="models">Models & Processing</TabsTrigger>
+        </TabsList>
 
-        <div className="space-y-6">
-          {/* API Base URL */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              API Base URL
-            </label>
-            <div className="flex space-x-3">
-              <input
-                type="url"
-                value={config.api_base_url}
-                onChange={(e) => handleConfigChange('api_base_url', e.target.value)}
-                placeholder="http://localhost:8000"
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <button
-                onClick={testApiConnection}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
-              >
-                <Globe className="h-4 w-4" />
-                <span>Test</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Mistral API Key */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Mistral API Key (for OCR)
-            </label>
-            <input
-              type="password"
-              value={config.mistral_api_key}
-              onChange={(e) => handleConfigChange('mistral_api_key', e.target.value)}
-              placeholder="Enter your Mistral API key"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              Required for OCR text extraction from documents
-            </p>
-          </div>
-
-          {/* OpenAI API Key */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              OpenAI API Key (for Information Extraction)
-            </label>
-            <input
-              type="password"
-              value={config.openai_api_key}
-              onChange={(e) => handleConfigChange('openai_api_key', e.target.value)}
-              placeholder="Enter your OpenAI API key"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              Required for GPT models and information extraction
-            </p>
-          </div>
-
-          {/* OpenRouter API Key */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              OpenRouter API Key (Optional)
-            </label>
-            <input
-              type="password"
-              value={config.openrouter_api_key}
-              onChange={(e) => handleConfigChange('openrouter_api_key', e.target.value)}
-              placeholder="Enter your OpenRouter API key"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              Provides access to Claude, Llama, and other models
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Model Configuration */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <Zap className="h-6 w-6 text-gray-600" />
-          <h2 className="text-xl font-semibold">Model Configuration</h2>
-        </div>
-
-        <div className="space-y-6">
-          {/* Default Model */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Default Model for Information Extraction
-            </label>
-            <select
-              value={config.default_model}
-              onChange={(e) => handleConfigChange('default_model', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              {availableModels.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name} ({model.provider}) - {model.description}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Available Models */}
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Available Models</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {availableModels.map((model) => (
-                <div key={model.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-gray-900">{model.name}</h4>
-                    <span className="text-sm text-gray-500">{model.provider}</span>
-                  </div>
-                  <p className="text-sm text-gray-600">{model.description}</p>
+        <TabsContent value="api">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-3">
+                <Key className="h-6 w-6" />
+                <span>API Configuration</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* API Base URL */}
+              <div className="space-y-2">
+                <Label htmlFor="api_base_url">API Base URL</Label>
+                <div className="flex space-x-3">
+                  <Input
+                    id="api_base_url"
+                    type="url"
+                    value={config.api_base_url}
+                    onChange={(e) => handleConfigChange('api_base_url', e.target.value)}
+                    placeholder="http://localhost:8000"
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={testApiConnection}
+                  >
+                    <Globe className="h-4 w-4 mr-2" />
+                    Test
+                  </Button>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+              </div>
 
-      {/* Processing Settings */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <SettingsIcon className="h-6 w-6 text-gray-600" />
-          <h2 className="text-xl font-semibold">Processing Settings</h2>
+              {/* Mistral API Key */}
+              <div className="space-y-2">
+                <Label htmlFor="mistral_api_key">Mistral API Key (for OCR)</Label>
+                <Input
+                  id="mistral_api_key"
+                  type="password"
+                  value={config.mistral_api_key}
+                  onChange={(e) => handleConfigChange('mistral_api_key', e.target.value)}
+                  placeholder="Enter your Mistral API key"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Required for OCR text extraction from documents
+                </p>
+              </div>
+
+              {/* OpenAI API Key */}
+              <div className="space-y-2">
+                <Label htmlFor="openai_api_key">OpenAI API Key (for Information Extraction)</Label>
+                <Input
+                  id="openai_api_key"
+                  type="password"
+                  value={config.openai_api_key}
+                  onChange={(e) => handleConfigChange('openai_api_key', e.target.value)}
+                  placeholder="Enter your OpenAI API key"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Required for GPT models and information extraction
+                </p>
+              </div>
+
+              {/* OpenRouter API Key */}
+              <div className="space-y-2">
+                <Label htmlFor="openrouter_api_key">OpenRouter API Key (Optional)</Label>
+                <Input
+                  id="openrouter_api_key"
+                  type="password"
+                  value={config.openrouter_api_key}
+                  onChange={(e) => handleConfigChange('openrouter_api_key', e.target.value)}
+                  placeholder="Enter your OpenRouter API key"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Provides access to Claude, Llama, and other models
+                </p>
+              </div>
+
+              <Button 
+                onClick={saveConfiguration} 
+                disabled={isSaving}
+                className="w-full"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSaving ? 'Saving...' : 'Save Configuration'}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="models">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-3">
+                <Zap className="h-6 w-6" />
+                <span>Model Configuration</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Default Model */}
+              <div className="space-y-2">
+                <Label htmlFor="default_model">Default Model for Information Extraction</Label>
+                <Select 
+                  value={config.default_model} 
+                  onValueChange={(value) => handleConfigChange('default_model', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableModels.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.name} ({model.provider}) - {model.description}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Available Models */}
+              <div className="space-y-3">
+                <h3 className="text-lg font-medium">Available Models</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {availableModels.map((model) => (
+                    <Card key={model.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium">{model.name}</h4>
+                          <span className="text-sm text-muted-foreground">{model.provider}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{model.description}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Processing Settings */}
+              <div className="space-y-3">
+                <h3 className="text-lg font-medium flex items-center space-x-2">
+                  <SettingsIcon className="h-5 w-5" />
+                  <span>Processing Settings</span>
+                </h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Max File Size (MB)
-            </label>
-            <input
-              type="number"
-              defaultValue={50}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="max_file_size">Max File Size (MB)</Label>
+                    <Input
+                      id="max_file_size"
+                      type="number"
+                      defaultValue={50}
+                    />
+                  </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Processing Timeout (seconds)
-            </label>
-            <input
-              type="number"
-              defaultValue={120}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="processing_timeout">Processing Timeout (seconds)</Label>
+                    <Input
+                      id="processing_timeout"
+                      type="number"
+                      defaultValue={120}
+                    />
+                  </div>
 
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="auto-retry"
-              defaultChecked
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <label htmlFor="auto-retry" className="text-sm font-medium text-gray-700">
-              Auto-retry failed processing
-            </label>
-          </div>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="auto-retry"
+                      defaultChecked
+                      className="rounded"
+                    />
+                    <Label htmlFor="auto-retry">
+                      Auto-retry failed processing
+                    </Label>
+                  </div>
 
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              id="save-text"
-              defaultChecked
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <label htmlFor="save-text" className="text-sm font-medium text-gray-700">
-              Save extracted text
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={saveConfiguration}
-          disabled={isSaving}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg flex items-center space-x-2"
-        >
-          <Save className="h-4 w-4" />
-          <span>{isSaving ? 'Saving...' : 'Save Configuration'}</span>
-        </button>
-      </div>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="save-text"
+                      defaultChecked
+                      className="rounded"
+                    />
+                    <Label htmlFor="save-text">
+                      Save extracted text
+                    </Label>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

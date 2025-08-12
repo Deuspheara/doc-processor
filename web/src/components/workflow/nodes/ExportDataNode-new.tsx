@@ -1,5 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
-import { Settings, FileOutput, Edit } from 'lucide-react';
+import { Download, Settings, FileOutput, Edit } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ interface ExportDataNodeProps {
       include_metadata?: boolean;
       description?: string;
     };
-    onConfigUpdate?: (nodeId: string, config: Record<string, unknown>) => void;
+    onConfigUpdate?: (nodeId: string, config: any) => void;
   };
   selected?: boolean;
 }

@@ -29,8 +29,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         );
       }
       
+      if (response.status === 422) {
+        const errorData = await response.json().catch(() => ({ detail: 'Validation error' }));
+        return NextResponse.json(
+          { error: errorData.detail || 'Validation error occurred' },
+          { status: 422 }
+        );
+      }
+      
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Workflow execution failed: ${response.statusText}`);
+      const errorMessage = typeof errorData === 'string' 
+        ? errorData 
+        : errorData.detail || errorData.message || `Workflow execution failed: ${response.statusText}`;
+      
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();

@@ -15,7 +15,19 @@ class WorkflowNode:
         self.outputs = {}
         
     async def execute(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute this node with given inputs"""
+        """Execute        # Generate execution summary
+        summary = self._generate_execution_summary(execution_results)
+        
+        # Clean results to remove binary data before JSON serialization
+        clean_results = self._sanitize_results_for_json(execution_results)
+        
+        return {
+            'status': 'completed' if summary['failed_nodes'] == 0 else 'failed',
+            'execution_id': str(uuid.uuid4()),
+            'results': clean_results,
+            'summary': summary,
+            'completed_at': datetime.utcnow().isoformat()
+        } with given inputs"""
         logger.info(f"Executing node {self.id} of type {self.type}")
         
         try:
@@ -46,15 +58,29 @@ class WorkflowNode:
             processed_doc = {
                 'id': doc.get('id', f'doc_{i}'),
                 'filename': doc.get('filename', f'document_{i}'),
-                'content': doc.get('content'),
+                'content': doc.get('content'),  # Keep content for processing
                 'content_type': doc.get('content_type', 'application/octet-stream'),
                 'metadata': doc.get('metadata', {}),
                 'processing_stage': 'input'
             }
             processed_documents.append(processed_doc)
         
+        # Return safe data without binary content for JSON serialization
+        safe_documents = []
+        for doc in processed_documents:
+            safe_doc = {
+                'id': doc['id'],
+                'filename': doc['filename'],
+                'content_type': doc['content_type'],
+                'content_size': len(doc['content']) if doc.get('content') else 0,
+                'metadata': doc['metadata'],
+                'processing_stage': doc['processing_stage']
+            }
+            safe_documents.append(safe_doc)
+        
         return {
-            'documents': processed_documents, 
+            'documents': processed_documents,  # Full documents for next nodes
+            'safe_documents': safe_documents,  # Safe data for response
             'count': len(processed_documents),
             'stage': 'document_input_complete'
         }
@@ -425,7 +451,8 @@ class WorkflowEngine:
             execution_results['__input__'] = {
                 'status': 'success',
                 'data': input_data,
-                'node_type': 'input'
+                'node_type': 'input',
+                'executed_at': datetime.utcnow().isoformat()
             }
         
         for node_id in execution_order:
@@ -462,10 +489,13 @@ class WorkflowEngine:
         # Generate execution summary
         summary = self._generate_execution_summary(execution_results)
         
+        # Clean results to remove binary data before JSON serialization
+        clean_results = self._sanitize_results_for_json(execution_results)
+        
         return {
             'status': 'completed' if summary['failed_nodes'] == 0 else 'failed',
             'execution_id': str(uuid.uuid4()),
-            'results': execution_results,
+            'results': clean_results,
             'summary': summary,
             'completed_at': datetime.utcnow().isoformat()
         }
@@ -551,3 +581,93 @@ class WorkflowEngine:
             'success_rate': successful_nodes / total_nodes if total_nodes > 0 else 0,
             'execution_time': None  # Could add timing if needed
         }
+    
+    def _sanitize_results_for_json(self, results: Dict) -> Dict:
+        """Remove binary data and other non-JSON-serializable content from results"""
+        clean_results = {}
+        
+        for node_id, result in results.items():
+            if result.get('status') == 'success':
+                clean_data = self._sanitize_dict(result['data'])
+                clean_results[node_id] = {
+                    'status': result['status'],
+                    'data': clean_data,
+                    'node_type': result.get('node_type', 'unknown'),
+                    'executed_at': result.get('executed_at', datetime.utcnow().isoformat())
+                }
+            else:
+                # Keep error results as-is (they shouldn't have binary data)
+                # But ensure they have the required keys
+                clean_results[node_id] = {
+                    'status': result.get('status', 'error'),
+                    'error': result.get('error', 'Unknown error'),
+                    'node_type': result.get('node_type', 'unknown'),
+                    'executed_at': result.get('executed_at', datetime.utcnow().isoformat())
+                }
+                
+        return clean_results
+    
+    def _sanitize_dict(self, data: Dict) -> Dict:
+        """Recursively sanitize a dictionary to remove binary data"""
+        clean_data = {}
+        
+        for key, value in data.items():
+            if key == 'content' and isinstance(value, bytes):
+                # Replace binary content with metadata
+                clean_data[f'{key}_size'] = len(value)
+                clean_data[f'{key}_type'] = 'binary'
+            elif key == 'documents' and isinstance(value, list):
+                # Special handling for document lists
+                clean_documents = []
+                for doc in value:
+                    if isinstance(doc, dict):
+                        clean_doc = {}
+                        for doc_key, doc_value in doc.items():
+                            if doc_key == 'content' and isinstance(doc_value, bytes):
+                                clean_doc[f'{doc_key}_size'] = len(doc_value)
+                                clean_doc[f'{doc_key}_type'] = 'binary'
+                            elif not isinstance(doc_value, bytes):
+                                clean_doc[doc_key] = doc_value
+                        clean_documents.append(clean_doc)
+                    else:
+                        clean_documents.append(doc)
+                clean_data[key] = clean_documents
+            elif isinstance(value, bytes):
+                # Replace any other binary data
+                clean_data[f'{key}_size'] = len(value)
+                clean_data[f'{key}_type'] = 'binary'
+            elif isinstance(value, str):
+                # Handle strings that might contain binary data
+                try:
+                    # Try to encode/decode to check if it's valid UTF-8
+                    value.encode('utf-8')
+                    clean_data[key] = value
+                except UnicodeEncodeError:
+                    # If encoding fails, it's likely binary data as string
+                    clean_data[f'{key}_size'] = len(value)
+                    clean_data[f'{key}_type'] = 'invalid_utf8_string'
+            elif isinstance(value, dict):
+                # Recursively clean nested dictionaries
+                clean_data[key] = self._sanitize_dict(value)
+            elif isinstance(value, list):
+                # Clean lists
+                clean_list = []
+                for item in value:
+                    if isinstance(item, dict):
+                        clean_list.append(self._sanitize_dict(item))
+                    elif isinstance(item, bytes):
+                        clean_list.append({'size': len(item), 'type': 'binary'})
+                    elif isinstance(item, str):
+                        try:
+                            item.encode('utf-8')
+                            clean_list.append(item)
+                        except UnicodeEncodeError:
+                            clean_list.append({'size': len(item), 'type': 'invalid_utf8_string'})
+                    else:
+                        clean_list.append(item)
+                clean_data[key] = clean_list
+            else:
+                # Keep other data types as-is
+                clean_data[key] = value
+                
+        return clean_data

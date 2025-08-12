@@ -4,6 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, Loader2, CheckCircle, AlertCircle, Workflow, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ProcessingResult {
   ocr_text: string;
@@ -244,68 +250,66 @@ export default function UploadPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Upload Document</h1>
-        <p className="text-gray-600 mt-2">
+        <h1 className="text-3xl font-bold">Upload Document</h1>
+        <p className="text-muted-foreground mt-2">
           Upload documents for OCR processing and information extraction
         </p>
       </div>
 
       {/* Document Type Selection */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold mb-4">Document Type</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={() => setSelectedType('auto')}
-            className={`p-4 rounded-lg border-2 text-left ${
-              selectedType === 'auto'
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Auto-Detect</h3>
-                <p className="text-sm text-gray-600">Automatically detect document type</p>
-              </div>
-            </div>
-          </button>
-
-          {documentTypes.map((type) => (
-            <button
-              key={type.id}
-              onClick={() => setSelectedType(type.id)}
-              className={`p-4 rounded-lg border-2 text-left ${
-                selectedType === type.id
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
+      <Card>
+        <CardHeader>
+          <CardTitle>Document Type</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button
+              variant={selectedType === 'auto' ? 'default' : 'outline'}
+              className="p-4 h-auto justify-start"
+              onClick={() => setSelectedType('auto')}
             >
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
-                  {type.icon}
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
                 </div>
-                <div>
-                  <h3 className="font-semibold">{type.name}</h3>
-                  <p className="text-sm text-gray-600">{type.description}</p>
+                <div className="text-left">
+                  <h3 className="font-semibold">Auto-Detect</h3>
+                  <p className="text-sm text-muted-foreground">Automatically detect document type</p>
                 </div>
               </div>
-            </button>
-          ))}
-        </div>
+            </Button>
 
-        {/* Custom Extraction Configuration */}
-        {selectedType === 'custom' && (
-          <div className="mt-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Custom Extraction Rules (JSON)
-            </label>
-            <textarea
-              value={customExtraction}
-              onChange={(e) => setCustomExtraction(e.target.value)}
-              placeholder={`{
+            {documentTypes.map((type) => (
+              <Button
+                key={type.id}
+                variant={selectedType === type.id ? 'default' : 'outline'}
+                className="p-4 h-auto justify-start"
+                onClick={() => setSelectedType(type.id)}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                    {type.icon}
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-semibold">{type.name}</h3>
+                    <p className="text-sm text-muted-foreground">{type.description}</p>
+                  </div>
+                </div>
+              </Button>
+            ))}
+          </div>
+
+          {/* Custom Extraction Configuration */}
+          {selectedType === 'custom' && (
+            <div className="mt-6">
+              <label className="block text-sm font-medium mb-2">
+                Custom Extraction Rules (JSON)
+              </label>
+              <textarea
+                value={customExtraction}
+                onChange={(e) => setCustomExtraction(e.target.value)}
+                className="w-full p-3 border border-input rounded-md"
+                placeholder={`{
   "entities": [
     {
       "entity": "company_name",
@@ -317,212 +321,229 @@ export default function UploadPage() {
     }
   ]
 }`}
-              className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-        )}
-      </div>
+                rows={6}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* File Upload Area */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div
-          {...getRootProps()}
-          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-            isDragActive
-              ? 'border-blue-400 bg-blue-50'
-              : 'border-gray-300 hover:border-gray-400'
-          }`}
-        >
-          <input {...getInputProps()} />
-          <div className="space-y-4">
-            <div className="flex justify-center">
-              <Upload className="h-12 w-12 text-gray-400" />
-            </div>
-            <div>
-              <p className="text-lg font-medium text-gray-900">
-                {isDragActive
-                  ? 'Drop the file here...'
-                  : 'Drag & drop a document here, or click to select'}
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
-                Supports PDF, PNG, JPG, JPEG, WebP files up to 50MB
-              </p>
+      <Card>
+        <CardContent className="p-6">
+          <div
+            {...getRootProps()}
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+              isDragActive
+                ? 'border-primary bg-primary/5'
+                : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+            }`}
+          >
+            <input {...getInputProps()} />
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <Upload className="h-12 w-12 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-lg font-medium">
+                  {isDragActive
+                    ? 'Drop the file here...'
+                    : 'Drag & drop a document here, or click to select'}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Supports PDF, PNG, JPG, JPEG, WebP files up to 50MB
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Processing Status */}
       {isProcessing && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center space-x-3">
-            <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
-            <div>
-              <h3 className="text-lg font-semibold">Processing Document...</h3>
-              <p className="text-gray-600">
-                Extracting text and analyzing content. This may take a few moments.
-              </p>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-3">
+              <Loader2 className="h-6 w-6 text-primary animate-spin" />
+              <div>
+                <h3 className="text-lg font-semibold">Processing Document...</h3>
+                <p className="text-muted-foreground">
+                  Extracting text and analyzing content. This may take a few moments.
+                </p>
+              </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center space-x-3">
-            <AlertCircle className="h-6 w-6 text-red-600" />
-            <div>
-              <h3 className="text-lg font-semibold text-red-900">Processing Failed</h3>
-              <p className="text-red-700">{error}</p>
-            </div>
-          </div>
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Processing Failed:</strong> {error}
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Results Display */}
       {result && (
         <div className="space-y-6">
           {/* Processing Statistics */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Processing Results</h3>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">
-                  {result.processing_stats.entity_count}
-                </p>
-                <p className="text-sm text-gray-600">Entities Found</p>
+          <Card>
+            <CardHeader>
+              <CardTitle>Processing Results</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-primary">
+                    {result.processing_stats.entity_count}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Entities Found</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-600">
+                    {result.processing_stats.page_count}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Pages</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-purple-600">
+                    {result.processing_stats.file_size_mb.toFixed(2)}MB
+                  </p>
+                  <p className="text-sm text-muted-foreground">File Size</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-yellow-600">
+                    {result.processing_stats.ocr_processing_time.toFixed(2)}s
+                  </p>
+                  <p className="text-sm text-muted-foreground">Processing Time</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-red-600">
+                    {result.processing_stats.text_length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Characters</p>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">
-                  {result.processing_stats.page_count}
-                </p>
-                <p className="text-sm text-gray-600">Pages</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-purple-600">
-                  {result.processing_stats.file_size_mb.toFixed(2)}MB
-                </p>
-                <p className="text-sm text-gray-600">File Size</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-yellow-600">
-                  {result.processing_stats.ocr_processing_time.toFixed(2)}s
-                </p>
-                <p className="text-sm text-gray-600">Processing Time</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-red-600">
-                  {result.processing_stats.text_length}
-                </p>
-                <p className="text-sm text-gray-600">Characters</p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Extracted Entities */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Extracted Information</h3>
-            <div className="space-y-3">
-              {result.extracted_entities.map((entity, index) => (
-                <div key={index} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <span className="font-medium text-gray-900">
-                      {entity.extraction_class.replace(/_/g, ' ').toUpperCase()}
-                    </span>
-                    <p className="text-gray-600 mt-1">{entity.extraction_text}</p>
-                  </div>
-                  {entity.attributes && (
-                    <div className="text-sm text-gray-500">
-                      {Object.entries(entity.attributes).map(([key, value]) => (
-                        <div key={key}>
-                          {key}: {JSON.stringify(value)}
+          <Card>
+            <CardHeader>
+              <CardTitle>Extracted Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {result.extracted_entities.map((entity, index) => (
+                  <div key={index} className="flex justify-between items-start p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <Badge variant="secondary" className="mb-2">
+                        {entity.extraction_class.replace(/_/g, ' ').toUpperCase()}
+                      </Badge>
+                      <p className="text-muted-foreground mt-1">{entity.extraction_text}</p>
+                      {entity.attributes && (
+                        <div className="text-sm text-muted-foreground mt-2">
+                          {Object.entries(entity.attributes).map(([key, value]) => (
+                            <div key={key}>
+                              {key}: {JSON.stringify(value)}
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* OCR Text Preview */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Extracted Text Preview</h3>
-            <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-              <pre className="text-sm text-gray-700 whitespace-pre-wrap">
-                {result.ocr_text.substring(0, 2000)}
-                {result.ocr_text.length > 2000 && '...'}
-              </pre>
-            </div>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Extracted Text Preview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-muted/50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                <pre className="text-sm whitespace-pre-wrap">
+                  {result.ocr_text.substring(0, 2000)}
+                  {result.ocr_text.length > 2000 && '...'}
+                </pre>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {/* Workflow Creation Dialog */}
       {showWorkflowDialog && detectionResult && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 w-96 max-w-90vw">
-            <div className="text-center space-y-4">
-              <div className="flex justify-center">
-                <div className="p-3 bg-blue-100 rounded-full">
-                  <Workflow className="h-8 w-8 text-blue-600" />
+          <Card className="w-96 max-w-90vw">
+            <CardContent className="p-8">
+              <div className="text-center space-y-4">
+                <div className="flex justify-center">
+                  <div className="p-3 bg-blue-100 rounded-full">
+                    <Workflow className="h-8 w-8 text-blue-600" />
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">
+                    Create Workflow?
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    We detected this is a <strong>{detectionResult.type.replace('_', ' ')}</strong> with {Math.round(detectionResult.confidence * 100)}% confidence.
+                  </p>
+                  <p className="text-muted-foreground text-sm mb-6">
+                    Would you like to create a pre-configured workflow optimized for processing {detectionResult.type.replace('_', ' ')} documents?
+                  </p>
+                </div>
+
+                <div className="bg-muted/50 rounded-lg p-4 mb-6">
+                  <div className="text-left space-y-2 text-sm">
+                    <div className="font-medium">This workflow will include:</div>
+                    <ul className="space-y-1 text-muted-foreground">
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        OCR processing optimized for {detectionResult.type}
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        AI extraction with relevant field detection
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        Data validation rules
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                        Export configuration
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    onClick={handleSkipWorkflow}
+                    className="flex-1"
+                  >
+                    Skip for Now
+                  </Button>
+                  <Button
+                    onClick={handleCreateWorkflow}
+                    className="flex-1"
+                  >
+                    Create Workflow
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
                 </div>
               </div>
-              
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Create Workflow?
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  We detected this is a <strong>{detectionResult.type.replace('_', ' ')}</strong> with {Math.round(detectionResult.confidence * 100)}% confidence.
-                </p>
-                <p className="text-gray-500 text-sm mb-6">
-                  Would you like to create a pre-configured workflow optimized for processing {detectionResult.type.replace('_', ' ')} documents?
-                </p>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <div className="text-left space-y-2 text-sm">
-                  <div className="font-medium text-gray-900">This workflow will include:</div>
-                  <ul className="space-y-1 text-gray-600">
-                    <li className="flex items-center">
-                      <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                      OCR processing optimized for {detectionResult.type}
-                    </li>
-                    <li className="flex items-center">
-                      <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                      AI extraction with relevant field detection
-                    </li>
-                    <li className="flex items-center">
-                      <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                      Data validation rules
-                    </li>
-                    <li className="flex items-center">
-                      <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
-                      Export configuration
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="flex space-x-3">
-                <button
-                  onClick={handleSkipWorkflow}
-                  className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                >
-                  Skip for Now
-                </button>
-                <button
-                  onClick={handleCreateWorkflow}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center"
-                >
-                  Create Workflow
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </button>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

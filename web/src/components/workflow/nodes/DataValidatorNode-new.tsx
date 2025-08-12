@@ -1,5 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
-import { Settings, CheckCircle, Edit, Plus, Trash2 } from 'lucide-react';
+import { Shield, Settings, CheckCircle, Edit, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,11 +16,11 @@ interface DataValidatorNodeProps {
       validation_rules?: Array<{
         field: string;
         type: string;
-        value?: string | number;
+        value?: any;
       }>;
       description?: string;
     };
-    onConfigUpdate?: (nodeId: string, config: Record<string, unknown>) => void;
+    onConfigUpdate?: (nodeId: string, config: any) => void;
   };
   selected?: boolean;
 }
@@ -214,7 +214,7 @@ export function DataValidatorNode({ id, data, selected }: DataValidatorNodeProps
                 
                 {(localConfig.validation_rules || []).length === 0 && (
                   <div className="text-center py-8 text-muted-foreground text-sm">
-                    No validation rules configured. Click &quot;Add Rule&quot; to start.
+                    No validation rules configured. Click "Add Rule" to start.
                   </div>
                 )}
               </div>

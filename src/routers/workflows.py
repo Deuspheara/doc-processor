@@ -132,8 +132,8 @@ async def delete_workflow(workflow_id: str):
         logger.error(f"Failed to delete workflow {workflow_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to delete workflow: {str(e)}")
 
-@router.post("/{workflow_id}/execute", response_model=Dict[str, Any])
-async def execute_workflow(workflow_id: str, files: Optional[List[UploadFile]] = File(None)):
+@router.post("/{workflow_id}/execute")
+async def execute_workflow(workflow_id: str, files: List[UploadFile] = File(default=[])):
     """Execute a workflow"""
     try:
         if workflow_id not in workflows_db:
@@ -141,13 +141,25 @@ async def execute_workflow(workflow_id: str, files: Optional[List[UploadFile]] =
         
         workflow = workflows_db[workflow_id]
         
+        # Validate that we have files if the workflow requires them
+        workflow_definition = workflow.get('definition', {})
+        nodes = workflow_definition.get('nodes', [])
+        
+        # Check if workflow has document-input nodes that require files
+        document_input_nodes = [node for node in nodes if node.get('type') == 'document-input']
+        if document_input_nodes and not files:
+            raise HTTPException(
+                status_code=422, 
+                detail="This workflow requires document files to be uploaded"
+            )
+        
         # Create execution record
         execution_id = str(uuid.uuid4())
         execution = {
             'id': execution_id,
             'workflow_id': workflow_id,
             'status': 'running',
-            'input_data': {'file_count': len(files) if files else 0},
+            'input_data': {'file_count': len(files)},
             'output_data': None,
             'error_message': None,
             'started_at': datetime.utcnow().isoformat(),

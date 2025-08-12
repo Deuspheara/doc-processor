@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ExternalLink } from 'lucide-react';
 
 type Result = {
   id: string;
@@ -61,80 +66,68 @@ const ResultsPage = () => {
     );
   }
 
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'processed': return 'default';
+      case 'processing': return 'secondary';
+      case 'failed': return 'destructive';
+      default: return 'outline';
+    }
+  };
+
   return (
     <div className="container mx-auto p-8">
       <h1 className="text-3xl font-bold mb-8">Processed Document Results</h1>
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full leading-normal">
-          <thead>
-            <tr>
-              <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Filename
-              </th>
-              <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Timestamp
-              </th>
-              <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {results.map(result => (
-              <tr key={result.id}>
-                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                  <p className="text-gray-900 whitespace-no-wrap">{result.filename}</p>
-                </td>
-                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                  {result.status === 'processed' && (
-                    <span className="relative inline-block px-3 py-1 font-semibold text-green-900 leading-tight">
-                      <span
-                        aria-hidden
-                        className="absolute inset-0 bg-green-200 opacity-50 rounded-full"
-                      ></span>
-                      <span className="relative">Processed</span>
-                    </span>
-                  )}
-                  {result.status === 'processing' && (
-                    <span className="relative inline-block px-3 py-1 font-semibold text-yellow-900 leading-tight">
-                      <span
-                        aria-hidden
-                        className="absolute inset-0 bg-yellow-200 opacity-50 rounded-full"
-                      ></span>
-                      <span className="relative">Processing</span>
-                    </span>
-                  )}
-                  {result.status === 'failed' && (
-                    <span className="relative inline-block px-3 py-1 font-semibold text-red-900 leading-tight">
-                      <span
-                        aria-hidden
-                        className="absolute inset-0 bg-red-200 opacity-50 rounded-full"
-                      ></span>
-                      <span className="relative">Failed</span>
-                    </span>
-                  )}
-                </td>
-                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                  <p className="text-gray-900 whitespace-no-wrap">
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Document Processing Results</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Filename</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Timestamp</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {results.map(result => (
+                <TableRow key={result.id}>
+                  <TableCell className="font-medium">{result.filename}</TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusVariant(result.status)}>
+                      {result.status.charAt(0).toUpperCase() + result.status.slice(1)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
                     {new Date(result.timestamp).toLocaleString()}
-                  </p>
-                </td>
-                <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm text-right">
-                  <a
-                    href={result.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-indigo-600 hover:text-indigo-900"
-                  >
-                    View Document
-                  </a>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                    >
+                      <a
+                        href={result.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center"
+                      >
+                        View Document
+                        <ExternalLink className="ml-2 h-4 w-4" />
+                      </a>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 };
