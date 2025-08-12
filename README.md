@@ -1,6 +1,6 @@
 # Document Processing App - Intelligent Document Processing 🚀
 
-A full-stack application with **Next.js frontend** and **FastAPI backend** that combines **Mistral OCR API** and **LangExtract** for comprehensive document processing and intelligent information extraction with visual workflow management.
+A full-stack application with **Next.js frontend** and **FastAPI backend** that combines **Mistral OCR API** and **LangExtract** for comprehensive document processing and intelligent information extraction with visual workflow management, powered by **Convex** for real-time backend infrastructure and **Clerk** for authentication.
 
 ## ⚡ Quick Start
 
@@ -9,15 +9,20 @@ A full-stack application with **Next.js frontend** and **FastAPI backend** that 
 git clone <repo-url>
 cd finance_app
 
-# 2. Configure environment
+# 2. Configure environment (Backend)
 cp .env.example .env
 # Edit .env with your API keys
 
-# 3. Start with Docker
+# 3. Configure frontend environment
+cd web
+cp .env.example .env.local
+# Add Convex and Clerk configuration
+
+# 4. Start with Docker
 ./start.sh
 # Or: docker-compose up --build
 
-# 4. Open application
+# 5. Open application
 # Frontend: http://localhost:3000
 # Backend API: http://localhost:8000/docs
 ```
@@ -47,12 +52,15 @@ cp .env.example .env
 Transform documents into structured data using state-of-the-art OCR and AI-powered extraction:
 
 - **🌐 Full-Stack Interface**: Modern React/Next.js web application with FastAPI backend
-- **📊 Visual Workflows**: Create and manage document processing workflows with React Flow
+- **� Authentication & User Management**: Secure user authentication and session management with Clerk
+- **💾 Real-time Backend**: Convex provides real-time database, file storage, and serverless functions
+- **�📊 Visual Workflows**: Create and manage document processing workflows with React Flow
 - **📄 Mistral OCR Integration**: Direct API integration with Mistral OCR for high-quality text extraction from PDFs and images
 - **🧠 LangExtract Power**: Structured information extraction using the LangExtract library with support for OpenAI, Gemini, and Ollama models
 - **🔧 Node-Based Processing**: Visual workflow builder with configurable nodes for OCR, AI extraction, validation, and data export
 - **⚡ Complete Pipeline**: Full document processing from upload to structured output in a single workflow
 - **🐳 Docker Ready**: Complete containerized setup with docker-compose
+- **📱 Multi-user Support**: Per-user document and workflow management with secure data isolation
 
 ## 🏗️ Architecture
 
@@ -78,19 +86,28 @@ src/
     └── pipeline.py         # Complete processing pipeline
 ```
 
-### Frontend Architecture (Next.js)
+### Frontend Architecture (Next.js + Convex + Clerk)
 ```
 web/src/
 ├── app/                 # Next.js App Router
 │   ├── workflows/          # Workflow management pages
 │   ├── document/           # Document processing interface
+│   ├── sign-in/            # Clerk authentication pages
+│   ├── sign-up/            # Clerk registration pages
 │   └── api/                # API route handlers
 ├── components/          # React components
 │   ├── workflow/           # Workflow builder components
 │   │   └── nodes/             # Individual workflow node components
-│   └── Navigation.tsx      # App navigation
-└── lib/                 # Utility libraries
-    └── extractionUtils.ts  # Client-side extraction helpers
+│   └── Navigation.tsx      # App navigation with user management
+├── lib/                 # Utility libraries
+│   └── extractionUtils.ts  # Client-side extraction helpers
+├── middleware.ts        # Clerk authentication middleware
+└── convex/              # Convex backend functions
+    ├── schema.ts           # Database schema definitions
+    ├── auth.config.ts      # Clerk + Convex authentication
+    ├── documents.ts        # Document management functions
+    ├── workflows.ts        # Workflow CRUD operations
+    └── users.ts            # User profile management
 ```
 
 ### Technology Stack
@@ -101,6 +118,22 @@ web/src/
 - **React Flow**: Visual workflow builder for creating processing pipelines
 - **FastAPI**: High-performance Python API framework with automatic OpenAPI documentation
 - **Next.js**: Full-stack React framework with App Router and API routes
+
+#### Backend Infrastructure
+- **Convex**: Real-time backend-as-a-service providing:
+  - 🗄️ **Real-time Database**: Reactive queries with automatic UI updates
+  - 📁 **File Storage**: Secure document upload and storage
+  - ⚡ **Serverless Functions**: TypeScript functions for business logic
+  - 🔄 **Real-time Sync**: Automatic data synchronization across clients
+  - 🛡️ **Built-in Security**: Row-level security and data isolation
+
+#### Authentication & User Management
+- **Clerk**: Complete authentication solution featuring:
+  - 🔐 **Multi-factor Authentication**: Email, phone, and authenticator app support
+  - 👥 **Social Logins**: Google, GitHub, Discord, and more
+  - 🎨 **Customizable UI**: Pre-built components with full customization
+  - 🛡️ **Security First**: JWT tokens, session management, and user verification
+  - 📱 **Multi-device Support**: Seamless authentication across devices
 
 #### Key Design Principles
 - **Direct API Integration**: No LangChain dependency - direct service integrations for optimal performance
@@ -127,6 +160,7 @@ cp .env.example .env  # Create from template
 
 ### 2. Configuration
 
+#### Backend Configuration
 Set the following environment variables in `.env`:
 
 ```env
@@ -143,6 +177,35 @@ DEBUG=false
 HOST=0.0.0.0
 PORT=8000
 ```
+
+#### Frontend Configuration (Convex + Clerk)
+Set the following environment variables in `web/.env.local`:
+
+```env
+# Convex Configuration
+NEXT_PUBLIC_CONVEX_URL=your_convex_deployment_url
+CONVEX_DEPLOY_KEY=your_convex_deploy_key
+
+# Clerk Authentication Configuration  
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxx
+CLERK_SECRET_KEY=sk_test_xxx
+CLERK_JWT_ISSUER_DOMAIN=your-clerk-domain.clerk.accounts.dev
+
+# Optional: Webhook configuration for user sync
+CLERK_WEBHOOK_SECRET=whsec_xxx
+```
+
+#### Setting up Convex
+1. **Install Convex CLI**: `npm install -g convex`
+2. **Initialize Convex**: `cd web && npx convex dev`
+3. **Deploy Schema**: Convex will automatically deploy your schema and functions
+4. **Get your deployment URL**: Copy from Convex dashboard to `NEXT_PUBLIC_CONVEX_URL`
+
+#### Setting up Clerk
+1. **Create Clerk Application**: Visit [clerk.com](https://clerk.com) and create a new application
+2. **Configure Authentication**: Enable desired sign-in methods (email, social, etc.)
+3. **Copy API Keys**: Get publishable and secret keys from Clerk dashboard
+4. **Configure JWT**: Set JWT issuer domain for Convex integration
 
 ### 3. Run the Application
 
@@ -308,6 +371,7 @@ result = response.json()
 
 ### Environment Variables
 
+#### Backend (.env)
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `MISTRAL_API_KEY` | ✅ | Mistral API key for OCR processing |
@@ -316,6 +380,16 @@ result = response.json()
 | `DEBUG` | ❌ | Enable debug mode (default: false) |
 | `HOST` | ❌ | Server host (default: 0.0.0.0) |
 | `PORT` | ❌ | Server port (default: 8000) |
+
+#### Frontend (web/.env.local)
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_CONVEX_URL` | ✅ | Convex deployment URL |
+| `CONVEX_DEPLOY_KEY` | ✅ | Convex deployment key (for CI/CD) |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | ✅ | Clerk publishable API key |
+| `CLERK_SECRET_KEY` | ✅ | Clerk secret API key |
+| `CLERK_JWT_ISSUER_DOMAIN` | ✅ | Clerk JWT issuer domain |
+| `CLERK_WEBHOOK_SECRET` | ⚠️ | Webhook secret for user sync |
 
 ## 🔧 Technical Details
 
@@ -349,12 +423,144 @@ Visual workflow builder powered by React Flow:
 - **Validation**: Built-in validation for workflow configuration and node connections
 - **Extensible**: Easy to add new node types and processing capabilities
 
+### Convex Database Schema
+
+The application uses Convex for real-time data management with the following schema:
+
+#### Users Table
+```typescript
+users: {
+  userId: string,           // Clerk user ID
+  email: string,
+  firstName?: string,
+  lastName?: string,
+  imageUrl?: string,
+  createdAt: string,
+  updatedAt: string,
+}
+```
+
+#### Documents Table
+```typescript
+documents: {
+  filename: string,
+  status: "processing" | "processed" | "failed",
+  timestamp: string,
+  file_size_mb: number,
+  content_type: string,
+  userId?: string,          // Owner user ID
+  processing_result?: {
+    ocr_text: string,
+    extracted_entities: Array<{
+      extraction_class: string,
+      extraction_text: string,
+      attributes: any,
+      start_char?: number,
+      end_char?: number,
+    }>,
+    extraction_metadata: any,
+    processing_stats: any,
+  },
+  error_message?: string,
+}
+```
+
+#### Workflows Table  
+```typescript
+workflows: {
+  name: string,
+  description?: string,
+  definition: any,          // React Flow nodes and edges
+  is_active: boolean,
+  created_at: string,
+  updated_at: string,
+  userId?: string,          // Owner user ID
+}
+```
+
+#### Workflow Executions Table
+```typescript
+workflow_executions: {
+  workflow_id: Id<"workflows">,
+  status: "pending" | "running" | "completed" | "failed",
+  input_data?: any,
+  output_data?: any,
+  started_at: string,
+  completed_at?: string,
+  userId?: string,          // Executor user ID
+}
+```
+
 ### Model Configuration
 
 - **Default Model**: OpenAI GPT-4o via LangExtract
 - **Supported Providers**: OpenAI, Gemini, Ollama (through LangExtract)
 - **Customizable**: Change model via API parameters or workflow node configuration
 - **API Key Management**: Centralized configuration with fallback options
+
+## 🔐 Authentication & User Management
+
+### Clerk Integration
+
+The application uses Clerk for complete user authentication and management:
+
+#### Features
+- **Sign-up/Sign-in**: Email and password authentication
+- **Social Logins**: Support for Google, GitHub, Discord, and other providers
+- **Multi-factor Authentication**: Email codes, SMS, and authenticator apps
+- **User Profiles**: Automatic profile management with avatars
+- **Session Management**: Secure JWT-based sessions with automatic refresh
+- **Password Reset**: Built-in password recovery flow
+- **Email Verification**: Automatic email verification for new users
+
+#### Authentication Flow
+1. **Public Routes**: `/sign-in`, `/sign-up` are accessible without authentication
+2. **Protected Routes**: All other routes require authentication via Clerk middleware
+3. **User Context**: User information available throughout the application
+4. **Automatic Sync**: User profiles automatically synced with Convex database
+
+#### Clerk + Convex Integration
+```typescript
+// Authentication configuration for Convex
+export default {
+  providers: [
+    {
+      domain: process.env.CLERK_JWT_ISSUER_DOMAIN,
+      applicationID: "convex",
+    },
+  ],
+};
+```
+
+#### User Data Management
+- **Automatic User Creation**: New users automatically added to Convex database
+- **Profile Synchronization**: User profile updates sync between Clerk and Convex
+- **Data Isolation**: All user data (documents, workflows) properly isolated by userId
+- **Secure Access**: Row-level security ensures users only access their own data
+
+## 💾 Real-time Backend with Convex
+
+### Convex Features
+
+#### Database Capabilities
+- **Real-time Queries**: Automatic UI updates when data changes
+- **TypeScript Schema**: Fully typed database operations
+- **Indexing**: Optimized queries with custom indexes
+- **Transactions**: ACID compliance for complex operations
+- **Pagination**: Built-in pagination for large datasets
+
+#### File Storage
+- **Secure Uploads**: Direct file uploads to Convex storage
+- **File Management**: Automatic file cleanup and organization
+- **Access Control**: User-based file access permissions
+- **CDN Integration**: Fast file delivery via global CDN
+
+#### Serverless Functions
+- **Query Functions**: Read data with real-time subscriptions
+- **Mutation Functions**: Write data with optimistic updates
+- **Action Functions**: External API integrations and side effects
+- **Scheduled Functions**: Cron jobs and background processing
+- **HTTP Actions**: Direct HTTP endpoints for webhooks and APIs
 
 ## 🐳 Docker Deployment
 
@@ -383,14 +589,54 @@ docker run -p 8000:8000 -e MISTRAL_API_KEY=your_key document-processing-api
 - Use `uvicorn` with multiple workers for production
 - Consider Redis caching for frequently processed documents
 - Implement rate limiting for API endpoints
+- **Convex**: Automatic scaling and global edge deployment
+- **Clerk**: Built-in performance optimization and global CDN
 
 ### Monitoring
 - Use `/ping` endpoint for health checks
 - Monitor processing times and error rates
 - Set up logging aggregation
+- **Convex Dashboard**: Real-time performance metrics and function logs
+- **Clerk Analytics**: User authentication and session analytics
 
 ### Security
 - Use HTTPS in production
 - Implement API key authentication
 - Validate and sanitize file uploads
 - Set appropriate CORS policies
+- **Clerk Security**: Enterprise-grade security with SOC 2 compliance
+- **Convex Security**: Built-in row-level security and data encryption
+
+### Deployment
+#### Frontend (Next.js + Convex + Clerk)
+```bash
+# Deploy to Vercel (recommended)
+npm run build
+vercel deploy
+
+# Deploy Convex functions
+npx convex deploy --prod
+
+# Configure production environment variables
+# - Add Clerk production keys
+# - Add Convex production URL
+# - Configure webhooks for user sync
+```
+
+#### Backend (FastAPI)
+```bash
+# Traditional deployment
+docker build -t document-processing-api .
+docker run -p 8000:8000 -e MISTRAL_API_KEY=your_key document-processing-api
+
+# Or use cloud providers
+# - AWS ECS/Fargate
+# - Google Cloud Run  
+# - Azure Container Instances
+```
+
+### Scaling Considerations
+- **Convex**: Automatically scales with usage, no configuration needed
+- **Clerk**: Supports unlimited users with enterprise plans
+- **FastAPI Backend**: Scale horizontally with load balancers
+- **File Processing**: Consider queue-based processing for large documents
